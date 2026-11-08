@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Delivery vehicle simulation</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main id="simulation" aria-label="Interactive delivery simulation">
+    <div id="loading" class="loading">Preparing your delivery route…</div>
+    <div id="workspace" hidden>
+      <section class="map-layout">
+        <div class="map-panel panel">
+          <div class="panel-heading"><div><span class="eyebrow">LIVE ROUTE PLAYBACK</span><h2>Delivery network</h2></div><button id="fit" class="quiet" type="button" title="Reset zoom and fit all locations">Fit view ↗</button></div>
+          <div id="map-wrap" class="map-wrap">
+            <svg id="map" viewBox="0 0 900 500" role="img" aria-label="Delivery route, locations and moving vehicle">
+              <defs>
+                <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M 30 0 L 0 0 0 30" fill="none" stroke="#223149" stroke-width="1"/></pattern>
+                <filter id="van-shadow" x="-80%" y="-80%" width="260%" height="260%"><feDropShadow dx="0" dy="3" stdDeviation="5" flood-opacity=".5"/></filter>
+              </defs>
+              <rect width="900" height="500" fill="#0d1728"/>
+              <rect width="900" height="500" fill="url(#grid)" opacity=".55"/>
+              <g id="network"><polyline id="route-line" fill="none" stroke="#495675" stroke-width="3" stroke-dasharray="7 6" stroke-linejoin="round"/><polyline id="traveled-line" fill="none" stroke="#22d3ee" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><g id="markers"></g></g>
+              <g id="vehicle" filter="url(#van-shadow)" aria-label="Vehicle 01">
+                <g id="van-body">
+                  <rect x="-16" y="-15" width="30" height="30" rx="6" fill="#818cf8" stroke="#d8ddff" stroke-width="1.5"/>
+                  <path d="M 10 -15 L 20 -10 L 23 -4 L 23 4 L 20 10 L 10 15 Z" fill="#6366f1" stroke="#d8ddff" stroke-width="1.5"/>
+                  <rect x="-10" y="-10" width="14" height="20" rx="2" fill="#a5b4fc"/>
+                  <path d="M 12 -10 L 18 -7 L 19 -3 L 19 3 L 18 7 L 12 10 Z" fill="#17304b"/>
+                  <rect x="-12" y="-18" width="9" height="4" rx="1" fill="#07101f"/><rect x="-12" y="14" width="9" height="4" rx="1" fill="#07101f"/>
+                  <rect x="10" y="-16" width="8" height="3" rx="1" fill="#07101f"/><rect x="10" y="13" width="8" height="3" rx="1" fill="#07101f"/>
+                  <rect x="20" y="-9" width="3" height="4" fill="#fef3c7"/><rect x="20" y="5" width="3" height="4" fill="#fef3c7"/>
+                  <path d="M -17 -9 L -17 -4 M -17 4 L -17 9" stroke="#fb7185" stroke-width="3"/>
+                </g>
+                <g id="vehicle-label"><rect x="-36" y="25" width="81" height="22" rx="6" fill="#111b2d" stroke="#33415b"/><text x="4" y="40" text-anchor="middle" fill="#e2e8f0" font-size="10" font-weight="650">Vehicle 01</text></g>
+              </g>
+            </svg>
+            <div id="complete-banner" class="complete-banner" hidden>✓ Delivery completed · returned to warehouse</div>
+            <div class="map-help">Drag to pan · scroll to zoom · select a stop for details</div>
+          </div>
+          <div class="legend"><span><i class="dot warehouse"></i>Warehouse</span><span><i class="dot pending"></i>Pending</span><span><i class="dot delivered"></i>Delivered</span><span><i class="line"></i>Traveled</span></div>
+        </div>
+        <aside class="status-panel panel" aria-label="Vehicle statistics">
+          <span class="eyebrow">VEHICLE 01</span>
+          <div class="status-line"><h2 id="vehicle-status">Idle</h2><span id="phase-badge" class="badge">At warehouse</span></div>
+          <div class="destination-block"><span class="small-label">CURRENT DESTINATION</span><strong id="destination">Ready at warehouse</strong><span id="position" class="muted">x 0.00 · y 0.00</span></div>
+          <div class="delivery-count"><strong id="delivered-count">0 / 0</strong><span class="muted">deliveries completed</span><span id="remaining-count" class="muted">0 remaining</span></div>
+          <div class="metric-grid">
+            <div><span class="small-label">TRAVELED</span><strong id="distance-traveled">0.00</strong><span class="muted">coordinate units</span></div>
+            <div><span class="small-label">REMAINING</span><strong id="distance-remaining">0.00</strong><span class="muted">coordinate units</span></div>
+            <div><span class="small-label">SIM TIME</span><strong id="elapsed">0.0 s</strong></div>
+            <div><span class="small-label">SIM LEFT</span><strong id="time-remaining">0.0 s</strong></div>
+          </div>
+          <div class="playback-eta"><span class="small-label">PLAYBACK REMAINING AT CURRENT SPEED</span><strong id="playback-remaining">0.0 s</strong></div>
+          <div class="progress-meta"><span>Distance covered</span><strong id="distance-progress">0.0%</strong></div><div class="progress-track"><div id="distance-bar"></div></div>
+          <div class="selected-stop"><span class="small-label">SELECTED LOCATION</span><strong id="selected-name">Select a location</strong><span id="selected-details" class="muted">Click a marker to inspect this stop.</span><span id="selected-status" class="stop-status"></span></div>
+        </aside>
+      </section>
+      <section class="controls panel" aria-label="Playback controls">
+        <div class="controls-top"><div class="control-buttons"><button id="play" class="primary" type="button">▶ Play</button><button id="pause" type="button">Ⅱ Pause</button><button id="stop" type="button">■ Stop</button><button id="restart" type="button">↻ Restart</button></div><label class="speed-label">Playback speed <select id="speed" aria-label="Playback speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label></div>
+        <div class="progress-meta"><span>Timeline progress <strong id="time-progress">0.0%</strong></span><span id="time-range">0.0 / 0.0 sim seconds</span></div>
+        <input id="seek" type="range" min="0" max="1000" step="1" value="0" aria-label="Seek simulation time">
+        <div class="control-footnote"><span id="route-summary"></span><span>Seeking pauses playback. Restart begins a new delivery.</span></div>
+      </section>
+      <section class="timeline-panel panel"><div class="panel-heading"><div><span class="eyebrow">DELIVERY EVENTS</span><h2>Journey timeline</h2></div><span id="event-count" class="muted">0 events</span></div><ol id="timeline" class="timeline"><li class="empty-event">Press Play to depart the warehouse.</li></ol></section>
+      <details id="locations-panel" class="locations-panel panel"><summary>Location manifest <span id="manifest-count" class="muted"></span></summary><div class="table-scroll"><table><thead><tr><th>Visit</th><th>Location</th><th>Coordinates</th><th>Status</th></tr></thead><tbody id="manifest"></tbody></table></div></details>
+      <p class="model-note">Straight-line Euclidean simulation · coordinate units, not road distance · simulation time is not real delivery ETA</p>
+    </div>
+    <div id="error" class="error" role="alert" hidden></div>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

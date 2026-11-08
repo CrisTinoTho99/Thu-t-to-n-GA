@@ -1,0 +1,58 @@
+{
+  "description": "Independent 3-4-5 triangle: depot is row 1, speed 1, two services of 2 seconds. Total distance 12 and duration 16.",
+  "schedule": {
+    "schema_version": 1,
+    "route_key": "fixture-triangle-v1",
+    "dataset_fingerprint": "fixture",
+    "algorithm": "Fixture route",
+    "seed": 42,
+    "route": [1, 0, 2, 1],
+    "locations": [
+      {"id": "A", "name": "Customer A", "x": 3, "y": 0, "is_depot": false},
+      {"id": "D", "name": "Warehouse", "x": 0, "y": 0, "is_depot": true},
+      {"id": "B", "name": "Customer B", "x": 3, "y": 4, "is_depot": false}
+    ],
+    "depot_index": 1,
+    "total_distance": 12,
+    "total_duration": 16,
+    "base_speed": 1,
+    "service_seconds": 2,
+    "phases": [
+      {"kind": "travel", "start_time": 0, "end_time": 3, "start_index": 1, "end_index": 0, "distance_start": 0, "distance_end": 3, "heading": 0, "route_position": 1},
+      {"kind": "service", "start_time": 3, "end_time": 5, "start_index": 0, "end_index": 0, "distance_start": 3, "distance_end": 3, "heading": 0, "route_position": 1},
+      {"kind": "travel", "start_time": 5, "end_time": 9, "start_index": 0, "end_index": 2, "distance_start": 3, "distance_end": 7, "heading": 1.5707963267948966, "route_position": 2},
+      {"kind": "service", "start_time": 9, "end_time": 11, "start_index": 2, "end_index": 2, "distance_start": 7, "distance_end": 7, "heading": 1.5707963267948966, "route_position": 2},
+      {"kind": "travel", "start_time": 11, "end_time": 16, "start_index": 2, "end_index": 1, "distance_start": 7, "distance_end": 12, "heading": -2.214297435588181, "route_position": 3}
+    ],
+    "stops": [
+      {"index": 0, "route_position": 1, "arrival_time": 3, "delivery_time": 5},
+      {"index": 2, "route_position": 2, "arrival_time": 9, "delivery_time": 11}
+    ],
+    "events": [
+      {"id": "e0", "type": "started", "time": 0, "index": 1, "route_position": 0},
+      {"id": "e1", "type": "departed", "time": 0, "index": 1, "route_position": 0},
+      {"id": "e2", "type": "arrived", "time": 3, "index": 0, "route_position": 1},
+      {"id": "e3", "type": "delivered", "time": 5, "index": 0, "route_position": 1},
+      {"id": "e4", "type": "departed", "time": 5, "index": 0, "route_position": 1},
+      {"id": "e5", "type": "arrived", "time": 9, "index": 2, "route_position": 2},
+      {"id": "e6", "type": "delivered", "time": 11, "index": 2, "route_position": 2},
+      {"id": "e7", "type": "departed", "time": 11, "index": 2, "route_position": 2},
+      {"id": "e8", "type": "returned", "time": 16, "index": 1, "route_position": 3},
+      {"id": "e9", "type": "completed", "time": 16, "index": 1, "route_position": 3}
+    ]
+  },
+  "snapshots": [
+    {"time": 9, "state": "idle", "expected": {"x": 0, "y": 0, "elapsed": 0, "remaining_time": 16, "phase": "at_depot", "destination_index": null, "delivered_count": 0, "remaining_count": 2, "distance_traveled": 0, "remaining_distance": 12, "progress_percent": 0, "distance_progress_percent": 0, "statuses": ["Pending", "Warehouse", "Pending"]}},
+    {"time": 0, "state": "paused", "expected": {"x": 0, "y": 0, "elapsed": 0, "remaining_time": 16, "phase": "moving", "destination_index": 0, "delivered_count": 0, "remaining_count": 2, "distance_traveled": 0, "remaining_distance": 12, "progress_percent": 0, "distance_progress_percent": 0, "statuses": ["In Transit", "Warehouse", "Pending"]}},
+    {"time": 1.5, "state": "paused", "expected": {"x": 1.5, "y": 0, "elapsed": 1.5, "remaining_time": 14.5, "phase": "moving", "destination_index": 0, "delivered_count": 0, "remaining_count": 2, "distance_traveled": 1.5, "remaining_distance": 10.5, "progress_percent": 9.375, "distance_progress_percent": 12.5, "statuses": ["In Transit", "Warehouse", "Pending"]}},
+    {"time": 3, "state": "paused", "expected": {"x": 3, "y": 0, "elapsed": 3, "remaining_time": 13, "phase": "delivering", "destination_index": 0, "delivered_count": 0, "remaining_count": 2, "distance_traveled": 3, "remaining_distance": 9, "progress_percent": 18.75, "distance_progress_percent": 25, "statuses": ["Delivering", "Warehouse", "Pending"]}},
+    {"time": 4, "state": "paused", "expected": {"x": 3, "y": 0, "elapsed": 4, "remaining_time": 12, "phase": "delivering", "destination_index": 0, "delivered_count": 0, "remaining_count": 2, "distance_traveled": 3, "remaining_distance": 9, "progress_percent": 25, "distance_progress_percent": 25, "statuses": ["Delivering", "Warehouse", "Pending"]}},
+    {"time": 5, "state": "paused", "expected": {"x": 3, "y": 0, "elapsed": 5, "remaining_time": 11, "phase": "moving", "destination_index": 2, "delivered_count": 1, "remaining_count": 1, "distance_traveled": 3, "remaining_distance": 9, "progress_percent": 31.25, "distance_progress_percent": 25, "statuses": ["Delivered", "Warehouse", "In Transit"]}},
+    {"time": 7, "state": "paused", "expected": {"x": 3, "y": 2, "elapsed": 7, "remaining_time": 9, "phase": "moving", "destination_index": 2, "delivered_count": 1, "remaining_count": 1, "distance_traveled": 5, "remaining_distance": 7, "progress_percent": 43.75, "distance_progress_percent": 41.666666666666664, "statuses": ["Delivered", "Warehouse", "In Transit"]}},
+    {"time": 9, "state": "paused", "expected": {"x": 3, "y": 4, "elapsed": 9, "remaining_time": 7, "phase": "delivering", "destination_index": 2, "delivered_count": 1, "remaining_count": 1, "distance_traveled": 7, "remaining_distance": 5, "progress_percent": 56.25, "distance_progress_percent": 58.333333333333336, "statuses": ["Delivered", "Warehouse", "Delivering"]}},
+    {"time": 11, "state": "paused", "expected": {"x": 3, "y": 4, "elapsed": 11, "remaining_time": 5, "phase": "moving", "destination_index": 1, "delivered_count": 2, "remaining_count": 0, "distance_traveled": 7, "remaining_distance": 5, "progress_percent": 68.75, "distance_progress_percent": 58.333333333333336, "statuses": ["Delivered", "Warehouse", "Delivered"]}},
+    {"time": 13.5, "state": "paused", "expected": {"x": 1.5, "y": 2, "elapsed": 13.5, "remaining_time": 2.5, "phase": "moving", "destination_index": 1, "delivered_count": 2, "remaining_count": 0, "distance_traveled": 9.5, "remaining_distance": 2.5, "progress_percent": 84.375, "distance_progress_percent": 79.16666666666666, "statuses": ["Delivered", "Warehouse", "Delivered"]}},
+    {"time": 16, "state": "paused", "expected": {"x": 0, "y": 0, "elapsed": 16, "remaining_time": 0, "phase": "at_depot", "destination_index": null, "delivered_count": 2, "remaining_count": 0, "distance_traveled": 12, "remaining_distance": 0, "progress_percent": 100, "distance_progress_percent": 100, "statuses": ["Delivered", "Warehouse", "Delivered"]}},
+    {"time": 100, "state": "paused", "expected": {"x": 0, "y": 0, "elapsed": 16, "remaining_time": 0, "phase": "at_depot", "destination_index": null, "delivered_count": 2, "remaining_count": 0, "distance_traveled": 12, "remaining_distance": 0, "progress_percent": 100, "distance_progress_percent": 100, "statuses": ["Delivered", "Warehouse", "Delivered"]}}
+  ]
+}

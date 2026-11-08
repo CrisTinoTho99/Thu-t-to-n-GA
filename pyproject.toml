@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tsp-ai-route-optimizer"
+version = "1.1.0"
+description = "Reproducible Euclidean TSP research dashboard"
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"tsp.simulation" = ["frontend/*.html", "frontend/*.js", "frontend/*.css", "frontend/package.json"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-ra"

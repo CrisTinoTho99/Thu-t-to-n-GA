@@ -1,0 +1,16 @@
+dataset:
+  customers: 20
+  seed: 42
+ga:
+  population_size: 100
+  generations: 200
+  crossover_rate: 0.9
+  mutation_rate: 0.2
+  elitism_count: 2
+  tournament_size: 3
+  seed: 42
+  early_stopping_patience: 0
+benchmark:
+  customer_counts: [5, 10, 20, 30]
+  repeats: 10
+  base_seed: 42

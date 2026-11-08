@@ -1,0 +1,278 @@
+{
+  "created_at_utc": "2026-11-07T03:31:20.484505+00:00",
+  "python": "3.14.4",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "processor": "Intel64 Family 6 Model 170 Stepping 4, GenuineIntel",
+  "package_versions": {
+    "numpy": "2.5.4",
+    "pandas": "3.1.1",
+    "plotly": "6.9.0",
+    "streamlit": "1.67.0",
+    "matplotlib": "3.11.2"
+  },
+  "base_seed": 42,
+  "repeats": 10,
+  "customer_counts": [
+    5,
+    10,
+    20,
+    30
+  ],
+  "ga_config": {
+    "population_size": 100,
+    "generations": 200,
+    "crossover_rate": 0.9,
+    "mutation_rate": 0.2,
+    "elitism_count": 2,
+    "tournament_size": 3,
+    "seed": 42,
+    "early_stopping_patience": 0
+  },
+  "algorithm_seeds": [
+    {
+      "customer_count": 5,
+      "repeat": 0,
+      "ga_seed": 2103693821,
+      "random_search_seed": 19443571
+    },
+    {
+      "customer_count": 5,
+      "repeat": 1,
+      "ga_seed": 717659619,
+      "random_search_seed": 3432644503
+    },
+    {
+      "customer_count": 5,
+      "repeat": 2,
+      "ga_seed": 469885091,
+      "random_search_seed": 3056973952
+    },
+    {
+      "customer_count": 5,
+      "repeat": 3,
+      "ga_seed": 815596061,
+      "random_search_seed": 1845395230
+    },
+    {
+      "customer_count": 5,
+      "repeat": 4,
+      "ga_seed": 420054563,
+      "random_search_seed": 673059229
+    },
+    {
+      "customer_count": 5,
+      "repeat": 5,
+      "ga_seed": 2507958453,
+      "random_search_seed": 4244276875
+    },
+    {
+      "customer_count": 5,
+      "repeat": 6,
+      "ga_seed": 1693297495,
+      "random_search_seed": 2882373302
+    },
+    {
+      "customer_count": 5,
+      "repeat": 7,
+      "ga_seed": 3703489217,
+      "random_search_seed": 878513340
+    },
+    {
+      "customer_count": 5,
+      "repeat": 8,
+      "ga_seed": 1468720946,
+      "random_search_seed": 3704956156
+    },
+    {
+      "customer_count": 5,
+      "repeat": 9,
+      "ga_seed": 978817623,
+      "random_search_seed": 2890958013
+    },
+    {
+      "customer_count": 10,
+      "repeat": 0,
+      "ga_seed": 3546534901,
+      "random_search_seed": 698640116
+    },
+    {
+      "customer_count": 10,
+      "repeat": 1,
+      "ga_seed": 1738025676,
+      "random_search_seed": 2074861307
+    },
+    {
+      "customer_count": 10,
+      "repeat": 2,
+      "ga_seed": 2459608965,
+      "random_search_seed": 1754194423
+    },
+    {
+      "customer_count": 10,
+      "repeat": 3,
+      "ga_seed": 3727528107,
+      "random_search_seed": 1260648221
+    },
+    {
+      "customer_count": 10,
+      "repeat": 4,
+      "ga_seed": 2849504862,
+      "random_search_seed": 3573725056
+    },
+    {
+      "customer_count": 10,
+      "repeat": 5,
+      "ga_seed": 3264740102,
+      "random_search_seed": 1340040015
+    },
+    {
+      "customer_count": 10,
+      "repeat": 6,
+      "ga_seed": 2823092280,
+      "random_search_seed": 3999706093
+    },
+    {
+      "customer_count": 10,
+      "repeat": 7,
+      "ga_seed": 2444072466,
+      "random_search_seed": 3695694846
+    },
+    {
+      "customer_count": 10,
+      "repeat": 8,
+      "ga_seed": 1154878706,
+      "random_search_seed": 4285230964
+    },
+    {
+      "customer_count": 10,
+      "repeat": 9,
+      "ga_seed": 1252988545,
+      "random_search_seed": 2679879800
+    },
+    {
+      "customer_count": 20,
+      "repeat": 0,
+      "ga_seed": 1953944769,
+      "random_search_seed": 2637436042
+    },
+    {
+      "customer_count": 20,
+      "repeat": 1,
+      "ga_seed": 3285061152,
+      "random_search_seed": 102023619
+    },
+    {
+      "customer_count": 20,
+      "repeat": 2,
+      "ga_seed": 1636654757,
+      "random_search_seed": 3879754960
+    },
+    {
+      "customer_count": 20,
+      "repeat": 3,
+      "ga_seed": 2826185804,
+      "random_search_seed": 2961249617
+    },
+    {
+      "customer_count": 20,
+      "repeat": 4,
+      "ga_seed": 1549593952,
+      "random_search_seed": 1071807266
+    },
+    {
+      "customer_count": 20,
+      "repeat": 5,
+      "ga_seed": 2189917327,
+      "random_search_seed": 122586980
+    },
+    {
+      "customer_count": 20,
+      "repeat": 6,
+      "ga_seed": 383150152,
+      "random_search_seed": 357379370
+    },
+    {
+      "customer_count": 20,
+      "repeat": 7,
+      "ga_seed": 111686563,
+      "random_search_seed": 1293828322
+    },
+    {
+      "customer_count": 20,
+      "repeat": 8,
+      "ga_seed": 870509202,
+      "random_search_seed": 1565135794
+    },
+    {
+      "customer_count": 20,
+      "repeat": 9,
+      "ga_seed": 691350929,
+      "random_search_seed": 1140718444
+    },
+    {
+      "customer_count": 30,
+      "repeat": 0,
+      "ga_seed": 1348371050,
+      "random_search_seed": 1634210129
+    },
+    {
+      "customer_count": 30,
+      "repeat": 1,
+      "ga_seed": 3871287080,
+      "random_search_seed": 3549006060
+    },
+    {
+      "customer_count": 30,
+      "repeat": 2,
+      "ga_seed": 169764218,
+      "random_search_seed": 3577967053
+    },
+    {
+      "customer_count": 30,
+      "repeat": 3,
+      "ga_seed": 4061538029,
+      "random_search_seed": 1373402266
+    },
+    {
+      "customer_count": 30,
+      "repeat": 4,
+      "ga_seed": 3980872443,
+      "random_search_seed": 2049454718
+    },
+    {
+      "customer_count": 30,
+      "repeat": 5,
+      "ga_seed": 3067303143,
+      "random_search_seed": 1219864150
+    },
+    {
+      "customer_count": 30,
+      "repeat": 6,
+      "ga_seed": 2445852386,
+      "random_search_seed": 2943764329
+    },
+    {
+      "customer_count": 30,
+      "repeat": 7,
+      "ga_seed": 2598043588,
+      "random_search_seed": 3759831141
+    },
+    {
+      "customer_count": 30,
+      "repeat": 8,
+      "ga_seed": 415959266,
+      "random_search_seed": 256238650
+    },
+    {
+      "customer_count": 30,
+      "repeat": 9,
+      "ga_seed": 784343047,
+      "random_search_seed": 2078349396
+    }
+  ],
+  "dataset_seed_rule": "1000 + customer_count",
+  "comparison_protocol": "One fixed Euclidean dataset per size; GA and Random Search have independent recorded seeds and matched complete-tour evaluation budgets per repeat. Deterministic methods run once. Runtime is measured wall-clock time and depends on hardware, scheduling, and implementation. 2-opt evaluations count candidate tours; Held–Karp counts dynamic-programming transitions and is not an equal-budget comparison.",
+  "distance_units": "Euclidean coordinate units, not road distance",
+  "std_definition": "Sample SD (ddof=1); zero for deterministic single runs; undefined for stochastic single runs",
+  "exact_limit_customers": 12
+}
