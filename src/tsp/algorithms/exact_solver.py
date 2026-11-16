@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 from time import perf_counter
-from ..distance import distance_matrix, route_distance
+from ..distance import resolve_matrix, route_distance
 from ..models import Dataset, OptimizationResult, _integer
 from ..validation import validate_route
 
 HARD_CUSTOMER_LIMIT = 12
 
 
-def exact_solver(dataset: Dataset, max_customers: int = HARD_CUSTOMER_LIMIT) -> OptimizationResult:
+def exact_solver(dataset: Dataset, max_customers: int = HARD_CUSTOMER_LIMIT, *, matrix=None) -> OptimizationResult:
     """Find a provably optimal tour using O(n²2ⁿ) time and O(n2ⁿ) memory.
 
     evaluations is the number of DP predecessor transitions compared, including
@@ -19,7 +19,7 @@ def exact_solver(dataset: Dataset, max_customers: int = HARD_CUSTOMER_LIMIT) -> 
     if dataset.n_customers > max_customers:
         raise ValueError(f"Exact solver is limited to {max_customers} customers (hard cap {HARD_CUSTOMER_LIMIT}).")
     started = perf_counter()
-    matrix = distance_matrix(dataset)
+    matrix = resolve_matrix(dataset, matrix)
     customers = dataset.customer_indices
     depot, count = dataset.depot_index, len(customers)
     costs: dict[tuple[int, int], float] = {}

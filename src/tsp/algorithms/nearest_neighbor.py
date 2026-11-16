@@ -2,15 +2,15 @@
 from __future__ import annotations
 
 from time import perf_counter
-from ..distance import distance_matrix, route_distance
+from ..distance import resolve_matrix, route_distance
 from ..models import Dataset, OptimizationResult
 from ..validation import validate_route
 
 
-def nearest_neighbor(dataset: Dataset) -> OptimizationResult:
+def nearest_neighbor(dataset: Dataset, *, matrix=None) -> OptimizationResult:
     """Start at depot; break equal-distance ties by original row index."""
     started = perf_counter()
-    matrix = distance_matrix(dataset)
+    matrix = resolve_matrix(dataset, matrix)
     route = [dataset.depot_index]
     unvisited = set(dataset.customer_indices)
     while unvisited:

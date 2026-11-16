@@ -16,6 +16,9 @@ from tsp.visualization.route_plot import route_figure
 from tsp.visualization.convergence_plot import convergence_figure, search_comparison_figure
 from tsp.visualization.comparison_plot import comparison_figure
 from tsp.ui.theme import apply_theme, brand, header, route_chips
+from tsp.ui.geographic_page import (EUCLID, ROAD, compute_routes, geographic_page,
+                                    invalidate_results, prepare_hcm_demo, set_dataset, switch_mode)
+from tsp.routing import RoutingError
 
 ROOT = Path(__file__).resolve().parents[3]
 PAGES = ["Dashboard", "Delivery Simulation", "Route Playground", "Genetic Algorithm Lab", "Algorithm Comparison", "Experiments & Analytics", "About & Documentation"]
@@ -34,18 +37,14 @@ def _initialize() -> None:
         dataset = generate_random_dataset(settings["dataset"]["customers"], settings["dataset"]["seed"], name="Urban delivery · 20 customers")
         config = GAConfig(**settings["ga"])
         st.session_state.dataset = dataset
-        st.session_state.results = optimize(dataset, config, ALGORITHMS[:4])
+        st.session_state.results = [] if st.query_params.get("demo") == "hcm" else optimize(dataset, config, ALGORITHMS[:4])
         st.session_state.run_config = config
         st.session_state.run_number = 1
         st.session_state.dataset_version = 0
 
 
 def _set_dataset(dataset: Dataset) -> None:
-    st.session_state.dataset = dataset
-    st.session_state.results = []
-    st.session_state.dataset_version += 1
-    st.session_state.pop("delivery_simulation_checkpoint", None)
-    st.session_state.pop("delivery_simulation_schedule", None)
+    set_dataset(dataset)
 
 
 def _chart(figure, key: str) -> None:
@@ -60,26 +59,37 @@ def _sidebar() -> str:
         st.divider()
         st.caption("DATASET")
         dataset = st.session_state.dataset
+        st.session_state.map_mode_selector = ROAD if dataset.is_geographic else EUCLID
+        st.radio("Chế độ bản đồ", [EUCLID, ROAD], key="map_mode_selector", on_change=switch_mode)
+        dataset = st.session_state.dataset
         st.markdown(f"**{dataset.name}**")
-        st.caption(f"{len(dataset.locations) - 1} customers + 1 warehouse · coordinate units")
-        with st.form("dataset_generator"):
-            source = st.selectbox("Dataset source", ["Random coordinates", "Sample · 5 customers", "Sample · 10 customers", "Sample · 20 customers", "Sample · 30 customers"])
-            customers = st.number_input("Number of customers", 1, 100, 20, step=1)
-            data_seed = st.number_input("Dataset seed", 0, 2**32 - 1, 42, step=1)
-            if st.form_submit_button("Load dataset", width="stretch"):
-                if source == "Random coordinates":
-                    replacement = generate_random_dataset(int(customers), int(data_seed))
-                else:
-                    n = int(source.split("·")[1].split()[0])
-                    sample = ROOT / "data/samples" / f"customers_{n}.csv"
-                    replacement = load_csv(sample, name=f"Sample · {n} customers") if sample.exists() else generate_random_dataset(n, 1000 + n)
-                _set_dataset(replacement)
-                st.rerun()
+        st.caption(f"{dataset.n_customers} customers + 1 warehouse · {'GPS latitude / longitude' if dataset.is_geographic else 'coordinate units'}")
+        if dataset.is_geographic:
+            st.radio("Nguồn chi phí", ["OSRM · đường bộ", "Đường thẳng gần đúng"], key="routing_source",
+                     on_change=invalidate_results)
+            st.caption("OSRM công cộng: tối đa 25 điểm, giới hạn 1 request/giây. Không cần API key. Chỉ gọi khi tính tuyến mới; cache được dùng lại.")
+        if not dataset.is_geographic:
+            with st.form("dataset_generator"):
+                source = st.selectbox("Dataset source", ["Random coordinates", "Sample · 5 customers", "Sample · 10 customers", "Sample · 20 customers", "Sample · 30 customers"])
+                customers = st.number_input("Number of customers", 1, 100, 20, step=1)
+                data_seed = st.number_input("Dataset seed", 0, 2**32 - 1, 42, step=1)
+                if st.form_submit_button("Load dataset", width="stretch"):
+                    if source == "Random coordinates":
+                        replacement = generate_random_dataset(int(customers), int(data_seed))
+                    else:
+                        n = int(source.split("·")[1].split()[0])
+                        sample = ROOT / "data/samples" / f"customers_{n}.csv"
+                        replacement = load_csv(sample, name=f"Sample · {n} customers") if sample.exists() else generate_random_dataset(n, 1000 + n)
+                    _set_dataset(replacement)
+                    st.rerun()
+        else:
+            st.caption("Nạp demo, thêm/sửa điểm GPS và chọn thuật toán trên trang bản đồ.")
         st.divider()
         st.caption("OPTIMIZATION ENGINE")
         with st.form("optimizer"):
             options = ALGORITHMS if len(dataset.locations) - 1 <= 12 else ALGORITHMS[:-1]
-            selected = st.multiselect("Algorithms", options, default=ALGORITHMS[:4])
+            selected = ([] if dataset.is_geographic else st.multiselect("Algorithms", options, default=ALGORITHMS[:4]))
+            st.session_state.selected_algorithms = selected
             with st.expander("Genetic Algorithm settings", expanded=False):
                 population = st.number_input("Population size", 4, 500, 100, step=2)
                 generations = st.number_input("Generations", 1, 2000, 200, step=10)
@@ -91,20 +101,21 @@ def _sidebar() -> str:
             seed = st.number_input("Algorithm seed", 0, 2**32 - 1, 42)
             match = st.checkbox("Match Random Search budget to GA", value=True)
             budget = st.number_input("Random Search custom budget", 1, 1_000_000, 19700)
-            submitted = st.form_submit_button("▶  Run optimization", type="primary", width="stretch")
+            submitted = st.form_submit_button("Áp dụng cấu hình GA" if dataset.is_geographic else "▶  Run optimization", type="primary", width="stretch")
         if submitted:
             try:
                 config = GAConfig(population_size=int(population), generations=int(generations), crossover_rate=crossover, mutation_rate=mutation, elitism_count=int(elite), tournament_size=int(tournament), seed=int(seed), early_stopping_patience=int(patience))
-                with st.spinner("Evaluating routes…"):
-                    results = optimize(dataset, config, selected, None if match else int(budget))
-                st.session_state.results = results
-                st.session_state.run_config = config
-                st.session_state.run_number += 1
-                st.success("Optimization complete")
-            except (ValueError, TypeError) as exc:
+                if dataset.is_geographic:
+                    st.session_state.run_config = config
+                    st.success("Đã áp dụng cấu hình. Nhấn Tối ưu tuyến trên trang bản đồ.")
+                else:
+                    with st.spinner("Evaluating routes…"):
+                        compute_routes(config, selected, None if match else int(budget))
+                    st.success("Optimization complete")
+            except (RoutingError, ValueError, TypeError, OSError) as exc:
                 st.error(str(exc))
         st.caption("Reproducible by seed. Display changes reuse the saved run.")
-        st.caption("EUCLIDEAN TSP · v1.1")
+        st.caption("TSP · EUCLID / OSRM · v1.2")
     return page
 
 
@@ -118,8 +129,9 @@ def _select_result(key: str = "route_result") -> OptimizationResult | None:
 
 def _results_table(results: list[OptimizationResult]) -> None:
     frame = results_frame(results)
+    unit = results[0].parameters.get("unit", "units") if results else "units"
     st.dataframe(frame, hide_index=True, width="stretch", column_config={
-        "algorithm": "Algorithm", "distance": st.column_config.NumberColumn("Distance (units)", format="%.3f"),
+        "algorithm": "Algorithm", "distance": st.column_config.NumberColumn(f"Objective ({unit})", format="%.3f"),
         "runtime_seconds": st.column_config.NumberColumn("Runtime (s)", format="%.4f"),
         "evaluations": "Evaluations*", "improvement_percent": st.column_config.NumberColumn("vs NN (%)", format="%.2f"), "seed": "Seed"})
     st.caption("Positive improvement = shorter than Nearest Neighbor. *Evaluation units differ for constructive, local and exact solvers; see Documentation.")
@@ -265,17 +277,19 @@ def _lab() -> None:
     snapshot = history[generation]
     cols = st.columns(4)
     cols[0].metric("GENERATION", snapshot["generation"])
-    cols[1].metric("BEST DISTANCE", f"{snapshot['best_distance']:.3f}")
+    cols[1].metric(f"BEST {result.parameters.get('objective', 'distance').upper()}",
+                   f"{snapshot['best_distance']:.3f} {result.parameters.get('unit', 'units')}")
     cols[2].metric("BEST FITNESS", f"{snapshot['best_fitness']:.6f}")
     cols[3].metric("AVERAGE FITNESS", f"{snapshot['average_fitness']:.6f}")
     a, b = st.columns(2)
     with a, st.container(border=True):
         _chart(route_figure(st.session_state.dataset, snapshot["route"], title=f"Generation {generation}"), "lab_route")
     with b, st.container(border=True):
-        _chart(convergence_figure(history), "lab_convergence")
+        _chart(convergence_figure(history, objective=result.parameters.get("objective", "distance"),
+                                  unit=result.parameters.get("unit", "coordinate units")), "lab_convergence")
     st.subheader("Best chromosome")
     route_chips([st.session_state.dataset.locations[i].id for i in snapshot["route"][1:-1]])
-    st.caption("Chromosome stores customer indices only. The warehouse is added at both ends for evaluation and rendering. Fitness = 1 / (distance + 1e-12).")
+    st.caption("Chromosome stores customer indices only. The warehouse is added at both ends for evaluation and rendering. Fitness = 1 / (objective cost + 1e-12).")
     st.json(result.parameters, expanded=False)
     with st.expander("Generation data"):
         st.dataframe(pd.DataFrame(history).drop(columns="route"), hide_index=True, width="stretch")
@@ -293,6 +307,8 @@ def _comparison() -> None:
         _chart(comparison_figure(results), "comparison_dist")
     with b:
         _chart(comparison_figure(results, metric="runtime_seconds"), "comparison_time")
+    if dataset.is_geographic:
+        st.caption("Mọi kết quả dùng chung dataset, ma trận có hướng và mục tiêu. Biểu đồ GPS dưới đây nối điểm để minh họa thứ tự; xem tuyến đường bộ tại Delivery Simulation.")
     if any(r.algorithm in {"Genetic Algorithm", "Random Search"} for r in results):
         with st.container(border=True):
             st.subheader("Search progress on a common budget axis")
@@ -302,7 +318,7 @@ def _comparison() -> None:
         for col, result in zip(st.columns(2), results[start:start+2]):
             with col, st.container(border=True):
                 st.subheader(result.algorithm)
-                st.caption(f"{result.distance:.3f} units · {result.runtime_seconds:.4f} s")
+                st.caption(f"{result.distance:.3f} {result.parameters.get('unit', 'units')} · solver {result.runtime_seconds:.4f} s")
                 _chart(route_figure(dataset, result.route), f"compare_route_{start}_{result.algorithm}")
     st.caption("GA is a heuristic: a shorter route is not guaranteed. 2-opt is shown separately; the GA does not use local search.")
     _exports(dataset, results, min(results, key=lambda r: r.distance))
@@ -359,9 +375,11 @@ def _experiments() -> None:
 
 def _documentation() -> None:
     header("About & Documentation", "Understand the model, the implementation, and the limits of the evidence.")
+    with st.expander("Bản đồ thực tế · hướng dẫn demo", expanded=st.session_state.dataset.is_geographic):
+        st.markdown((ROOT / "docs/geographic_demo.md").read_text(encoding="utf-8"))
     st.markdown("""### A delivery loop on a coordinate plane
 The Traveling Salesperson Problem asks for the shortest closed tour visiting every customer once.
-Here, one warehouse is fixed. Distances are straight lines in **coordinate units**, rather than road travel distances or travel times.
+One warehouse is fixed. Euclidean mode uses straight lines in **coordinate units**. Geographic mode uses an explicit directed OSRM cost matrix in metres or seconds.
 
 ### The genetic algorithm
 A chromosome is a permutation of customer indices. A random population evolves through tournament selection,
@@ -388,11 +406,11 @@ use wall-clock runtime for broader computational comparisons.
 4. Export dataset CSV, complete results JSON, tables, PNG or interactive HTML.
 
 ### Scope and limitations
-One vehicle, one warehouse, symmetric Euclidean distances. No vehicle capacity, time windows, traffic, geocoding or road network.
+One vehicle, one warehouse. Euclidean or directed road costs. No vehicle capacity, time windows, live traffic or geocoding.
 GA and local search are heuristics without a global optimality guarantee. Seeds reproduce routes and histories under the same software versions;
 runtimes vary. The interface supports at most 100 generated customers to keep interaction practical. Uploaded datasets are capped at 500 customers.
 GA replay uses generation snapshots. Delivery Simulation animates saved solver routes with independent playback controls;
-its times describe a Euclidean simulation, not real delivery times.
+Euclidean times are abstract; geographic times are road-data estimates, compressed separately for demo playback.
 
 **Stack:** Python · Streamlit · NumPy · Pandas · Plotly · Matplotlib · Pytest
 """)
@@ -414,11 +432,19 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     apply_theme()
     _initialize()
+    if st.query_params.get("demo") == "hcm" and not st.session_state.get("hcm_demo_link_loaded"):
+        st.session_state.hcm_demo_link_loaded = True
+        prepare_hcm_demo()
+        st.session_state.page = "Delivery Simulation"
     page = _sidebar()
     from tsp.ui.simulation_page import simulation_page
-    {"Dashboard": _dashboard, "Delivery Simulation": simulation_page,
+    pages = {"Dashboard": _dashboard, "Delivery Simulation": simulation_page,
      "Route Playground": _playground, "Genetic Algorithm Lab": _lab,
      "Algorithm Comparison": _comparison, "Experiments & Analytics": _experiments,
-     "About & Documentation": _documentation}[page]()
+     "About & Documentation": _documentation}
+    if st.session_state.dataset.is_geographic and page in {"Dashboard", "Delivery Simulation", "Route Playground"}:
+        geographic_page()
+    else:
+        pages[page]()
     st.divider()
-    st.caption("TSP AI Route Optimizer · Genetic Algorithm research workspace · All distances use Euclidean coordinate units")
+    st.caption("TSP AI Route Optimizer · Euclid / Leaflet / OpenStreetMap / OSRM · Ước tính đường bộ, không có giao thông thời gian thực")

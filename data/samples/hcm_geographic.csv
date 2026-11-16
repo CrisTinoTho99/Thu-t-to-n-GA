@@ -1,0 +1,12 @@
+id,name,latitude,longitude,is_depot
+D0,Kho Bến Thành,10.77012,106.69803,true
+C01,Điểm giao Nguyễn Huệ,10.77449,106.70312,false
+C02,Điểm giao Đồng Khởi,10.77672,106.70215,false
+C03,Điểm giao Bưu điện Thành phố,10.77963,106.69958,false
+C04,Điểm giao Hồ Con Rùa,10.78293,106.69548,false
+C05,Điểm giao Võ Văn Tần,10.77933,106.69218,false
+C06,Điểm giao Nguyễn Đình Chiểu,10.78135,106.68856,false
+C07,Điểm giao Công viên Tao Đàn,10.77485,106.69033,false
+C08,Điểm giao Phạm Ngũ Lão,10.76766,106.69348,false
+C09,Điểm giao Cô Giang,10.76264,106.69589,false
+C10,Điểm giao Bến Vân Đồn,10.76413,106.70301,false

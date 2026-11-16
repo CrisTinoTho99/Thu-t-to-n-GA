@@ -7,6 +7,7 @@ from typing import Any
 
 import streamlit as st
 from streamlit.components.v1 import declare_component
+from tsp.models import Dataset
 
 FRONTEND = Path(__file__).resolve().parent / "frontend"
 CHECKPOINT_KEY = "delivery_simulation_checkpoint"
@@ -54,3 +55,35 @@ def render_simulation(schedule: dict[str, Any]) -> dict[str, Any] | None:
             st.session_state[CHECKPOINT_KEY] = current
             return current
     return previous
+
+
+def validate_map_event(value: Any, dataset: Dataset) -> dict[str, Any] | None:
+    """Only accept a new, finite GPS click belonging to the displayed input."""
+    if (not isinstance(value, dict) or value.get("kind") != "add_point"
+            or value.get("dataset_fingerprint") != dataset.fingerprint):
+        return None
+    latitude, longitude = value.get("latitude"), value.get("longitude")
+    if any(isinstance(v, bool) or not isinstance(v, (int, float))
+           or not math.isfinite(v) for v in (latitude, longitude)):
+        return None
+    if not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
+        return None
+    event_id = value.get("event_id")
+    if not isinstance(event_id, str) or not event_id.strip() or len(event_id) > 100:
+        return None
+    return {"kind": "add_point", "latitude": float(latitude), "longitude": float(longitude),
+            "event_id": event_id, "dataset_fingerprint": dataset.fingerprint}
+
+
+def render_map_editor(dataset: Dataset) -> dict[str, Any] | None:
+    """Display the same Leaflet component as an editor without invoking routing.
+
+    The caller deduplicates event_id and applies point changes to the Dataset;
+    this boundary rejects stale events emitted before a dataset change.
+    """
+    if not dataset.is_geographic:
+        raise ValueError("The map editor requires explicit latitude/longitude data.")
+    value = _component(editor={"locations": dataset.to_dict()["locations"],
+                               "dataset_fingerprint": dataset.fingerprint},
+                       key="delivery_map_editor", default=None)
+    return validate_map_event(value, dataset)

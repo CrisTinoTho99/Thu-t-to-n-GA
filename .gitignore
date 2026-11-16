@@ -5,6 +5,7 @@ __pycache__/
 .ruff_cache/
 .coverage
 .qa/
+.cache/
 node_modules/
 tmp/
 .streamlit/secrets.toml

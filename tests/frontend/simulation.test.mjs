@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { Playback, snapshotAt } from "../../src/tsp/simulation/frontend/engine.js";
+import { Playback, snapshotAt, sampleGeometry } from "../../src/tsp/simulation/frontend/engine.js";
 
 const fixture = JSON.parse(readFileSync(new URL("../fixtures/simulation_cases.json", import.meta.url), "utf8"));
 const schedule = fixture.schedule;
@@ -175,4 +175,50 @@ test("Invalid speeds and times are rejected without corrupting playback", () => 
   for (const value of [Number.NaN, Number.POSITIVE_INFINITY]) assert.throws(() => clock.player.seek(value));
   assert.equal(clock.player.state, "idle");
   near(clock.player.snapshot().elapsed, 0);
+});
+
+test("road player follows each bent leg, rewinds deliveries and returns to its snapped depot", () => {
+  const road = structuredClone(schedule);
+  road.route_key = "bent-road-fixture";
+  road.coordinate_mode = "geographic";
+  road.locations[0].x = 2; road.locations[0].y = 0;
+  road.locations[1].x = 0; road.locations[1].y = 0;
+  road.locations[2].x = 2; road.locations[2].y = 2;
+  road.parking_positions = {0: [2, 0], 1: [0, 0], 2: [2, 2]};
+  const travel = road.phases.filter(phase => phase.kind === "travel");
+  Object.assign(travel[0], {geometry: [[0, 0], [0, 1], [2, 1], [2, 0]], geometry_cumulative_m: [0, 1, 3, 4]});
+  Object.assign(travel[1], {geometry: [[2, 0], [2, 2]], geometry_cumulative_m: [0, 2]});
+  Object.assign(travel[2], {geometry: [[2, 2], [0, 2], [0, 0]], geometry_cumulative_m: [0, 2, 4]});
+  for (const phase of road.phases.filter(phase => phase.kind === "service")) {
+    phase.parking_position = road.parking_positions[phase.end_index];
+  }
+  const clock = fakeClock(road);
+  clock.player.play();
+  let frame = clock.advance(1500);
+  near(frame.x, 1); near(frame.y, 1); // the straight chord has y=0
+  near(frame.distance_traveled, 1.5);
+  clock.player.seek(13.5);
+  frame = clock.player.snapshot();
+  assert.equal(frame.delivered_count, 2);
+  near(frame.x, 0); near(frame.y, 2);
+  clock.player.seek(1.5);
+  frame = clock.player.snapshot();
+  assert.equal(frame.delivered_count, 0);
+  assert.equal(frame.statuses[0], "In Transit");
+  near(frame.x, 1); near(frame.y, 1);
+  clock.player.seek(16);
+  frame = clock.player.snapshot();
+  assert.equal(clock.player.state, "completed");
+  near(frame.x, 0); near(frame.y, 0);
+  near(frame.distance_traveled, 12);
+  clock.player.restart();
+  assert.equal(clock.player.snapshot().delivered_count, 0);
+});
+
+test("polyline sampler handles duplicate vertices and both endpoints", () => {
+  const phase = {geometry: [[0, 0], [0, 0], [2, 0], [2, 0]],
+    geometry_cumulative_m: [0, 0, 2, 2], heading: 0};
+  assert.deepEqual(sampleGeometry(phase, 0), {x: 0, y: 0, heading: 0});
+  assert.deepEqual(sampleGeometry(phase, .25), {x: .5, y: 0, heading: 0});
+  assert.deepEqual(sampleGeometry(phase, 1), {x: 2, y: 0, heading: 0});
 });

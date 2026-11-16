@@ -3,18 +3,18 @@ from __future__ import annotations
 
 from time import perf_counter
 import numpy as np
-from ..distance import distance_matrix
+from ..distance import resolve_matrix
 from ..models import Dataset, OptimizationResult, _integer, validate_seed
 from ..validation import validate_route
 
 
-def random_search(dataset: Dataset, evaluation_budget: int = 10000, seed: int = 42) -> OptimizationResult:
+def random_search(dataset: Dataset, evaluation_budget: int = 10000, seed: int = 42, *, matrix=None) -> OptimizationResult:
     """Evaluate exactly budget tours; repeated permutations count as evaluations."""
     _integer(evaluation_budget, "evaluation_budget", 1)
     validate_seed(seed)
     started = perf_counter()
     rng = np.random.default_rng(seed)
-    matrix = distance_matrix(dataset)
+    matrix = resolve_matrix(dataset, matrix)
     depot = dataset.depot_index
     customers = np.asarray(dataset.customer_indices, dtype=int)
     best_distance = float("inf")

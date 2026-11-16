@@ -1,8 +1,14 @@
 # TSP AI Route Optimizer
 
+## Bản đồ thực tế miễn phí
+
+Mở **http://localhost:8501/?demo=hcm** sau khi chạy ứng dụng, hoặc chọn **Bản đồ thực tế → ▶ Chạy demo TP.HCM → Play**. Demo có đủ 10 khách và response OSRM thật đã đóng gói, vẫn tối ưu/phát xe khi kết nối OSRM bị chặn. Điểm mới cần routing trực tuyến. Leaflet 1.9.4 + OpenStreetMap + OSRM không cần API key; GPS và dữ liệu x/y cũ cùng được hỗ trợ. Có sửa điểm/kho, cache, fallback đường thẳng ghi rõ nhãn, chi phí có hướng và phát lại bằng JavaScript. Có thể dùng `.\run_demo.ps1` từ PowerShell bình thường.
+
+Xem [hướng dẫn demo từng bước, mô hình dữ liệu và giới hạn dịch vụ](docs/geographic_demo.md) và [kết quả kiểm chứng bản đồ](docs/geographic_verification.md).
+
 Ứng dụng Python/Streamlit tối ưu tuyến giao hàng bằng thuật toán di truyền (Genetic Algorithm, GA), so sánh với Random Search, Nearest Neighbor, Held–Karp và Nearest Neighbor + 2-opt. Giao diện gồm Dashboard, Delivery Simulation, Route Playground, Genetic Algorithm Lab, Algorithm Comparison, Experiments & Analytics và About & Documentation.
 
-Khoảng cách trong dự án là **khoảng cách Euclid trên mặt phẳng**, có đơn vị tọa độ. Ứng dụng không truy vấn bản đồ đường bộ, giao thông hoặc thời gian giao hàng thực tế.
+Chế độ **Mô phỏng Euclid** dùng khoảng cách trên mặt phẳng theo đơn vị tọa độ. Chế độ **Bản đồ thực tế** dùng ma trận có hướng và hình học đường bộ OSRM, hiển thị trên Leaflet/OpenStreetMap. Thời gian hành trình là ước tính, không có giao thông thời gian thực.
 
 ## Cài đặt và chạy
 
@@ -16,7 +22,7 @@ python -m venv .venv
 
 Trên macOS/Linux, thay `.\.venv\Scripts\python.exe` bằng `.venv/bin/python`. Truy cập địa chỉ mà Streamlit in ra, mặc định `http://localhost:8501`.
 
-Không cần API key, tài khoản dịch vụ hay kết nối bản đồ. Sau khi cài dependencies, tối ưu hóa và nhập/xuất dữ liệu chạy cục bộ.
+Không cần API key hoặc tài khoản thanh toán. Solver, nhập/xuất dữ liệu và demo đường bộ đã ghi nhận chạy cục bộ; nền bản đồ và routing tọa độ mới cần Internet.
 
 `requirements-lock.txt` ghi phiên bản đã chạy trên Windows/Python 3.14; dùng `requirements.txt` cho cài đặt đa nền tảng. Nếu cần tạo lại PDF, cài thêm `python -m pip install -r requirements-report.txt`; nhóm thư viện này không bắt buộc để chạy ứng dụng.
 
@@ -122,7 +128,7 @@ Xem [kiến trúc](docs/architecture.md) và [thiết kế thuật toán](docs/a
 - [Báo cáo PDF](report/TSP_AI_Route_Optimizer_Report.pdf) và [nội dung thuyết trình 12 slide](presentation/slides.md).
 - [Trạng thái kiểm chứng](docs/verification.md) và [số liệu tổng hợp](results/final/benchmark_summary.csv).
 
-Đóng gói lại bằng `python scripts/package_release.py`. Tạo lại PDF theo [hướng dẫn báo cáo](report/README.md).
+Đóng gói từ các file đã đưa vào Git index bằng `python scripts/package_release.py --tracked-only` (stage file mới trước). Tạo lại PDF theo [hướng dẫn báo cáo](report/README.md).
 
 Tài liệu có nội dung Markdown và báo cáo PDF; thuyết trình có nội dung slide Markdown. Chưa xuất `.docx` và `.pptx` vì môi trường artifact hiện tại không hỗ trợ quy trình xuất các định dạng này. GA Lab xem lại thế hệ bằng thanh trượt; Delivery Simulation có animation xe trên tuyến đã tính, độc lập với quá trình tối ưu.
 

@@ -20,11 +20,15 @@ def comparison_figure(
     """Compare distance, measured seconds, or evaluated solutions."""
     if metric not in {"distance", "runtime_seconds", "evaluations"}:
         raise ValueError("Unsupported comparison metric.")
-    frame = results.copy() if isinstance(results, pd.DataFrame) else results_frame(results)
+    values = None if isinstance(results, pd.DataFrame) else list(results)
+    frame = results.copy() if values is None else results_frame(values)
     titles = {"distance": "Route distance", "runtime_seconds": "Execution time",
               "evaluations": "Evaluated solutions"}
     units = {"distance": "Coordinate units", "runtime_seconds": "Seconds",
              "evaluations": "Objective evaluations"}
+    if values and values[0].parameters.get("matrix_fingerprint"):
+        titles["distance"] = f"Route objective · {values[0].parameters.get('objective', 'distance')}"
+        units["distance"] = values[0].parameters.get("unit", "Coordinate units")
     figure = go.Figure(go.Bar(
         x=frame["algorithm"], y=frame[metric],
         marker=dict(color=[algorithm_color(str(name)) for name in frame["algorithm"]],

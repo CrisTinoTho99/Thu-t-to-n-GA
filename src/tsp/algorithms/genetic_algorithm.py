@@ -5,7 +5,7 @@ from time import perf_counter
 from typing import Sequence
 import numpy as np
 
-from ..distance import distance_matrix
+from ..distance import resolve_matrix
 from ..models import Dataset, GAConfig, OptimizationResult
 from ..validation import validate_route
 
@@ -41,7 +41,7 @@ def inversion_mutation(route: Sequence[int], rng: np.random.Generator) -> list[i
     return mutated
 
 
-def genetic_algorithm(dataset: Dataset, config: GAConfig | None = None) -> OptimizationResult:
+def genetic_algorithm(dataset: Dataset, config: GAConfig | None = None, *, matrix=None) -> OptimizationResult:
     """Minimize closed tour distance without heuristic seeding or local search.
 
     Crossover probability is applied once per selected parent pair. Mutation
@@ -53,7 +53,7 @@ def genetic_algorithm(dataset: Dataset, config: GAConfig | None = None) -> Optim
     config = config or GAConfig()
     if not isinstance(config, GAConfig):
         raise ValueError("config must be a validated GAConfig.")
-    matrix = distance_matrix(dataset)
+    matrix = resolve_matrix(dataset, matrix)
     rng = np.random.default_rng(config.seed)
     depot = dataset.depot_index
     customers = np.asarray(dataset.customer_indices, dtype=int)

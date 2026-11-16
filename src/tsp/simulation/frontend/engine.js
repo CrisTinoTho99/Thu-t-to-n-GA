@@ -3,6 +3,31 @@ const SPEEDS = [0.5, 1, 2, 4];
 const STATES = new Set(["idle", "playing", "paused", "stopped", "completed"]);
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 
+/** GeoJSON [longitude, latitude] interpolation weighted by road polyline metres.
+ * Python prepares the cumulative lengths once. Playback and seeking perform no
+ * network requests and share this pure sampler with the other journey values.
+ */
+export function sampleGeometry(phase, fraction) {
+  const points = phase.geometry;
+  const cumulative = phase.geometry_cumulative_m;
+  const target = clamp(fraction, 0, 1) * cumulative.at(-1);
+  let low = 0, high = cumulative.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (cumulative[middle] <= target) low = middle + 1;
+    else high = middle;
+  }
+  const segment = clamp(low - 1, 0, points.length - 2);
+  const start = points[segment], end = points[segment + 1];
+  const length = cumulative[segment + 1] - cumulative[segment];
+  const part = length > 0 ? clamp((target - cumulative[segment]) / length, 0, 1) : 1;
+  return {
+    x: start[0] + part * (end[0] - start[0]),
+    y: start[1] + part * (end[1] - start[1]),
+    heading: length > 0 ? Math.atan2(end[1] - start[1], end[0] - start[0]) : phase.heading,
+  };
+}
+
 /** Derive every visible value from the same simulation cursor. */
 export function snapshotAt(schedule, time, state = "paused") {
   if (!Number.isFinite(time)) throw new RangeError("Simulation time must be finite.");
@@ -16,6 +41,8 @@ export function snapshotAt(schedule, time, state = "paused") {
   const statuses = schedule.locations.map((_, index) => index === schedule.depot_index ? "Warehouse" : "Pending");
   let x = depot.x;
   let y = depot.y;
+  const parkedDepot = schedule.parking_positions?.[String(schedule.depot_index)];
+  if (parkedDepot) [x, y] = parkedDepot;
   let heading = schedule.phases[0]?.heading ?? 0;
   let phase = "at_depot";
   let destination = null;
@@ -39,19 +66,21 @@ export function snapshotAt(schedule, time, state = "paused") {
         const fraction = length > 0 ? clamp((t - active.start_time) / length, 0, 1) : 1;
         x = start.x + (end.x - start.x) * fraction;
         y = start.y + (end.y - start.y) * fraction;
+        if (active.geometry) ({x, y, heading} = sampleGeometry(active, fraction));
         traveled = active.distance_start + (active.distance_end - active.distance_start) * fraction;
         phase = "moving";
         if (destination !== schedule.depot_index && statuses[destination] !== "Delivered") statuses[destination] = "In Transit";
       } else {
         x = end.x;
         y = end.y;
+        if (active.parking_position) [x, y] = active.parking_position;
         traveled = active.distance_end;
         phase = "delivering";
         if (destination !== schedule.depot_index) statuses[destination] = "Delivering";
       }
     } else {
       traveled = schedule.total_distance;
-      heading = schedule.phases.at(-1)?.heading ?? heading;
+      heading = schedule.final_heading ?? schedule.phases.at(-1)?.heading ?? heading;
     }
   }
   traveled = clamp(traveled, 0, schedule.total_distance);

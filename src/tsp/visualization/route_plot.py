@@ -67,4 +67,8 @@ def route_figure(
                          uirevision=f"{dataset.fingerprint}-{title}")
     figure.update_xaxes(title="x · coordinate units", constrain="domain")
     figure.update_yaxes(title="y · coordinate units", scaleanchor="x", scaleratio=1)
+    if dataset.is_geographic:
+        figure.update_layout(title=title or "GPS · thứ tự giao (đoạn thẳng minh họa)")
+        figure.update_xaxes(title="Longitude · degrees")
+        figure.update_yaxes(title="Latitude · degrees")
     return figure

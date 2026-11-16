@@ -11,13 +11,19 @@ from typing import Any
 
 @dataclass(frozen=True)
 class Location:
-    """A location in an abstract Euclidean coordinate system."""
+    """A Euclidean point, or an explicitly identified WGS84 geographic point.
+
+    Geographic x/y are longitude/latitude aliases for existing plot consumers.
+    Never infer GPS from the range of a legacy x/y coordinate.
+    """
 
     id: str
     name: str
     x: float
     y: float
     is_depot: bool = False
+    latitude: float | None = None
+    longitude: float | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.id, str) or not self.id.strip():
@@ -31,6 +37,15 @@ class Location:
                 raise ValueError("Coordinates must be finite numbers.")
         if not isinstance(self.is_depot, bool):
             raise ValueError("is_depot must be a boolean.")
+        if (self.latitude is None) != (self.longitude is None):
+            raise ValueError("latitude and longitude must be supplied together.")
+        if self.latitude is not None:
+            for name, limit in (("latitude", 90), ("longitude", 180)):
+                value = getattr(self, name)
+                if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not -limit <= value <= limit:
+                    raise ValueError(f"{name} must be a finite number in [-{limit}, {limit}].")
+            if self.x != self.longitude or self.y != self.latitude:
+                raise ValueError("Geographic x/y must equal longitude/latitude respectively.")
 
 
 @dataclass(frozen=True)
@@ -58,6 +73,10 @@ class Dataset:
         return len(self.locations) - 1
 
     @property
+    def is_geographic(self) -> bool:
+        return all(point.latitude is not None for point in self.locations)
+
+    @property
     def fingerprint(self) -> str:
         """Hash ordered input content; labels and the depot are included."""
         encoded = json.dumps(self.to_dict(), sort_keys=True, ensure_ascii=False, allow_nan=False)
@@ -66,7 +85,8 @@ class Dataset:
     def to_frame(self):
         """Return an editable independent pandas DataFrame."""
         import pandas as pd
-        return pd.DataFrame([asdict(location) for location in self.locations])
+        columns = ["id", "name", "latitude", "longitude", "is_depot"] if self.is_geographic else ["id", "name", "x", "y", "is_depot"]
+        return pd.DataFrame([asdict(location) for location in self.locations])[columns]
 
     def to_dict(self) -> dict[str, Any]:
         return {"name": self.name, "locations": [asdict(location) for location in self.locations]}

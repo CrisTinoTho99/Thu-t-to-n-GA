@@ -4,7 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Delivery vehicle simulation</title>
+  <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="./styles.css">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
 </head>
 <body>
   <main id="simulation" aria-label="Interactive delivery simulation">
@@ -13,7 +15,13 @@
       <section class="map-layout">
         <div class="map-panel panel">
           <div class="panel-heading"><div><span class="eyebrow">LIVE ROUTE PLAYBACK</span><h2>Delivery network</h2></div><button id="fit" class="quiet" type="button" title="Reset zoom and fit all locations">Fit view ↗</button></div>
+          <div id="basemap-tools" class="basemap-tools" hidden>
+            <label>Nền bản đồ <select id="basemap-provider" aria-label="Nguồn nền bản đồ"></select></label>
+            <button id="reload-tiles" class="quiet" type="button">Tải lại nền</button>
+            <span id="basemap-status" role="status" aria-live="polite"></span>
+          </div>
           <div id="map-wrap" class="map-wrap">
+            <div id="leaflet-map" hidden aria-label="Bản đồ đường bộ OpenStreetMap"></div>
             <svg id="map" viewBox="0 0 900 500" role="img" aria-label="Delivery route, locations and moving vehicle">
               <defs>
                 <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M 30 0 L 0 0 0 30" fill="none" stroke="#223149" stroke-width="1"/></pattern>
@@ -37,9 +45,9 @@
               </g>
             </svg>
             <div id="complete-banner" class="complete-banner" hidden>✓ Delivery completed · returned to warehouse</div>
-            <div class="map-help">Drag to pan · scroll to zoom · select a stop for details</div>
+            <div id="map-help" class="map-help">Drag to pan · scroll to zoom · select a stop for details</div>
           </div>
-          <div class="legend"><span><i class="dot warehouse"></i>Warehouse</span><span><i class="dot pending"></i>Pending</span><span><i class="dot delivered"></i>Delivered</span><span><i class="line"></i>Traveled</span></div>
+          <div class="legend"><span><i class="dot warehouse"></i>Warehouse</span><span><i class="dot pending"></i>Pending</span><span><i class="dot active"></i>In transit / delivering</span><span><i class="dot delivered"></i>Delivered</span><span><i class="line"></i>Traveled</span></div>
         </div>
         <aside class="status-panel panel" aria-label="Vehicle statistics">
           <span class="eyebrow">VEHICLE 01</span>
@@ -47,11 +55,12 @@
           <div class="destination-block"><span class="small-label">CURRENT DESTINATION</span><strong id="destination">Ready at warehouse</strong><span id="position" class="muted">x 0.00 · y 0.00</span></div>
           <div class="delivery-count"><strong id="delivered-count">0 / 0</strong><span class="muted">deliveries completed</span><span id="remaining-count" class="muted">0 remaining</span></div>
           <div class="metric-grid">
-            <div><span class="small-label">TRAVELED</span><strong id="distance-traveled">0.00</strong><span class="muted">coordinate units</span></div>
-            <div><span class="small-label">REMAINING</span><strong id="distance-remaining">0.00</strong><span class="muted">coordinate units</span></div>
-            <div><span class="small-label">SIM TIME</span><strong id="elapsed">0.0 s</strong></div>
-            <div><span class="small-label">SIM LEFT</span><strong id="time-remaining">0.0 s</strong></div>
+            <div><span class="small-label">TRAVELED</span><strong id="distance-traveled">0.00</strong><span id="distance-unit-traveled" class="muted">coordinate units</span></div>
+            <div><span class="small-label">REMAINING</span><strong id="distance-remaining">0.00</strong><span id="distance-unit-remaining" class="muted">coordinate units</span></div>
+            <div><span class="small-label">DEMO TIME</span><strong id="elapsed">0.0 s</strong></div>
+            <div><span class="small-label">DEMO LEFT</span><strong id="time-remaining">0.0 s</strong></div>
           </div>
+          <div id="journey-estimate" class="journey-estimate" hidden><span>Di chuyển ước tính <strong id="estimated-travel"></strong></span><span>Giao hàng <strong id="estimated-service"></strong></span><span>Hành trình ước tính <strong id="estimated-journey"></strong></span><span>Đã đi theo ước tính <strong id="journey-elapsed">0 s</strong></span></div>
           <div class="playback-eta"><span class="small-label">PLAYBACK REMAINING AT CURRENT SPEED</span><strong id="playback-remaining">0.0 s</strong></div>
           <div class="progress-meta"><span>Distance covered</span><strong id="distance-progress">0.0%</strong></div><div class="progress-track"><div id="distance-bar"></div></div>
           <div class="selected-stop"><span class="small-label">SELECTED LOCATION</span><strong id="selected-name">Select a location</strong><span id="selected-details" class="muted">Click a marker to inspect this stop.</span><span id="selected-status" class="stop-status"></span></div>
@@ -65,10 +74,12 @@
       </section>
       <section class="timeline-panel panel"><div class="panel-heading"><div><span class="eyebrow">DELIVERY EVENTS</span><h2>Journey timeline</h2></div><span id="event-count" class="muted">0 events</span></div><ol id="timeline" class="timeline"><li class="empty-event">Press Play to depart the warehouse.</li></ol></section>
       <details id="locations-panel" class="locations-panel panel"><summary>Location manifest <span id="manifest-count" class="muted"></span></summary><div class="table-scroll"><table><thead><tr><th>Visit</th><th>Location</th><th>Coordinates</th><th>Status</th></tr></thead><tbody id="manifest"></tbody></table></div></details>
-      <p class="model-note">Straight-line Euclidean simulation · coordinate units, not road distance · simulation time is not real delivery ETA</p>
+      <p id="model-note" class="model-note">Straight-line Euclidean simulation · coordinate units, not road distance · simulation time is not real delivery ETA</p>
     </div>
+    <p id="tile-notice" class="tile-notice" role="status" hidden></p>
     <div id="error" class="error" role="alert" hidden></div>
   </main>
+  <script src="./vendor/leaflet/leaflet.js"></script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>

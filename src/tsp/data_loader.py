@@ -11,6 +11,7 @@ from .models import Dataset, Location, _integer, validate_seed
 from .validation import MAX_CUSTOMERS
 
 REQUIRED_COLUMNS = ("id", "name", "x", "y", "is_depot")
+GEO_COLUMNS = ("id", "name", "latitude", "longitude", "is_depot")
 
 
 def _boolean(value: Any) -> bool:
@@ -27,19 +28,24 @@ def dataset_from_frame(frame: pd.DataFrame, name: str = "Custom dataset") -> Dat
     """Validate all required fields, preserving the input's row order."""
     if not isinstance(frame, pd.DataFrame):
         raise ValueError("Input must be a pandas DataFrame.")
-    missing = set(REQUIRED_COLUMNS) - set(frame.columns)
+    geographic = "latitude" in frame.columns or "longitude" in frame.columns
+    required = GEO_COLUMNS if geographic else REQUIRED_COLUMNS
+    missing = set(required) - set(frame.columns)
     if missing:
         raise ValueError("Missing required columns: " + ", ".join(sorted(missing)))
     if frame.columns.duplicated().any():
         raise ValueError("CSV columns must be unique.")
     rows: list[Location] = []
     for position, (_, row) in enumerate(frame.iterrows(), start=1):
-        if row[list(REQUIRED_COLUMNS)].isna().any():
+        if row[list(required)].isna().any():
             raise ValueError(f"Row {position}: required fields cannot be empty.")
         try:
-            if isinstance(row["x"], (bool, np.bool_)) or isinstance(row["y"], (bool, np.bool_)):
+            x_column, y_column = ("longitude", "latitude") if geographic else ("x", "y")
+            if isinstance(row[x_column], (bool, np.bool_)) or isinstance(row[y_column], (bool, np.bool_)):
                 raise ValueError("Coordinates must be finite numbers.")
-            rows.append(Location(str(row["id"]).strip(), str(row["name"]).strip(), float(row["x"]), float(row["y"]), _boolean(row["is_depot"])))
+            x, y = float(row[x_column]), float(row[y_column])
+            rows.append(Location(str(row["id"]).strip(), str(row["name"]).strip(), x, y, _boolean(row["is_depot"]),
+                                 latitude=y if geographic else None, longitude=x if geographic else None))
         except (TypeError, ValueError, OverflowError) as exc:
             raise ValueError(f"Row {position}: {exc}") from exc
     return Dataset(name, tuple(rows))

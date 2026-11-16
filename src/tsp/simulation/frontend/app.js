@@ -1,5 +1,6 @@
-/** Offline SVG renderer and the small Streamlit v1 message bridge. */
+/** SVG/Leaflet renderer and the small Streamlit v1 message bridge. */
 import {Playback} from "./engine.js";
+import {LeafletMap, distanceLabel} from "./leaflet-map.js";
 
 const $ = id => document.getElementById(id);
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -8,6 +9,10 @@ const COLORS = {Warehouse: "#34d399", Pending: "#818cf8", "In Transit": "#fbbf24
 const STATE_LABELS = {idle: "Idle", playing: "Moving", paused: "Paused", stopped: "Stopped", completed: "Completed"};
 const PHASE_LABELS = {moving: "On route", delivering: "Delivering", at_depot: "At warehouse"};
 let schedule = null;
+let editor = null;
+let roadMap = null;
+let addSequence = 0;
+const geographic = () => schedule?.coordinate_mode === "geographic";
 let playback = null;
 let animation = null;
 let lastPaint = -Infinity;
@@ -36,6 +41,7 @@ function message(type, payload = {}) {
 }
 
 function resizeFrame() {
+  if (roadMap && !$("leaflet-map").hidden) roadMap.map.invalidateSize({pan: false});
   const height = Math.ceil($("simulation").getBoundingClientRect().height) + 4;
   if (height > 0 && height !== frameHeight) {
     frameHeight = height;
@@ -83,6 +89,12 @@ function setText(id, value) {
 
 function number(value, digits = 2) { return Number(value).toLocaleString("en-US", {minimumFractionDigits: digits, maximumFractionDigits: digits}); }
 function seconds(value) { return `${number(value, 1)} s`; }
+function journeyTime(value) {
+  const rounded = Math.round(value);
+  if (rounded >= 3600) return `${Math.floor(rounded / 3600)} h ${Math.floor(rounded % 3600 / 60)} min`;
+  if (rounded >= 60) return `${Math.floor(rounded / 60)} min ${rounded % 60} s`;
+  return seconds(value);
+}
 
 function mapPoint(point) {
   return {x: 450 + (point.x - base.centerX) * base.scale, y: 250 - (point.y - base.centerY) * base.scale};
@@ -93,11 +105,80 @@ function updateView() {
 }
 
 function fitView() {
+  if (geographic() || editor) { roadMap?.fit(); return; }
   view = {x: 0, y: 0, width: 900, height: 500};
   updateView();
 }
 
+function getRoadMap() {
+  if (!roadMap) roadMap = new LeafletMap($("leaflet-map"), {
+    onSelect(index) {
+      selectedIndex = index;
+      if (playback) render(playback.snapshot());
+    },
+    onAdd(latitude, longitude) {
+      if (!editor || disabled) return;
+      message("streamlit:setComponentValue", {dataType: "json", value: {
+        kind: "add_point", latitude, longitude,
+        dataset_fingerprint: editor.dataset_fingerprint,
+        event_id: `${Date.now()}:${++addSequence}`,
+      }});
+    },
+  });
+  return roadMap;
+}
+
+function drawGeographicNetwork() {
+  base = {};
+  // SVGElement does not reflect the HTML `hidden` property in browsers.
+  $("map").toggleAttribute("hidden", true);
+  $("leaflet-map").hidden = false;
+  $("basemap-tools").hidden = false;
+  getRoadMap().network(schedule);
+  getRoadMap().basemap.refreshStatus();
+  $("manifest").replaceChildren();
+  markers = [];
+  manifestRows = [];
+  const order = new Map(schedule.route.slice(0, -1).map((index, position) => [index, position]));
+  for (const [index, location] of schedule.locations.entries()) {
+    const row = document.createElement("tr"); row.tabIndex = 0;
+    row.setAttribute("role", "button"); row.setAttribute("aria-label", `Inspect ${location.name}`);
+    const choose = () => { selectedIndex = index; roadMap.select(index); render(playback.snapshot()); };
+    row.addEventListener("click", choose);
+    row.addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); choose(); } });
+    for (const text of [location.is_depot ? "Kho" : order.get(index), `${location.id} · ${location.name}`, `lat ${number(location.latitude, 6)} · lon ${number(location.longitude, 6)}`]) {
+      const cell = document.createElement("td"); cell.textContent = text; row.append(cell);
+    }
+    const status = document.createElement("td"); status.textContent = location.is_depot ? "Warehouse" : "Pending";
+    row.append(status); manifestRows.push(status); $("manifest").append(row);
+  }
+  selectedIndex = schedule.depot_index;
+  setText("manifest-count", `${schedule.locations.length - 1} khách hàng + kho`);
+  setText("route-summary", `${schedule.algorithm} · ${distanceLabel(schedule.total_distance)} · mục tiêu: ${schedule.objective === "duration" ? "thời gian (s)" : "khoảng cách đường bộ (m)"}`);
+  setText("model-note", schedule.source === "approximate"
+    ? "Đường thẳng gần đúng · chưa có dữ liệu tuyến đường bộ · không phải giao thông thời gian thực."
+    : "Ước tính theo dữ liệu đường bộ OSRM · không phải giao thông thời gian thực · animation phát theo thời gian demo.");
+  setText("map-help", "Kéo để di chuyển · cuộn để phóng to · nhấp điểm để xem trạng thái");
+  setText("distance-unit-traveled", "m / km"); setText("distance-unit-remaining", "m / km");
+  $("journey-estimate").hidden = false;
+  setText("estimated-travel", journeyTime(schedule.estimated_travel_seconds));
+  setText("estimated-service", journeyTime(schedule.estimated_service_seconds));
+  setText("estimated-journey", journeyTime(schedule.estimated_journey_seconds));
+}
+
 function drawNetwork() {
+  $("workspace").classList.remove("editor-mode");
+  $("workspace").classList.toggle("geographic-mode", geographic());
+  $("fit").textContent = geographic() ? "Vừa khung bản đồ" : "Fit view ↗";
+  $("journey-estimate").hidden = true;
+  $("tile-notice").hidden = true;
+  if (geographic()) { drawGeographicNetwork(); return; }
+  $("map").toggleAttribute("hidden", false);
+  $("leaflet-map").hidden = true;
+  $("basemap-tools").hidden = true;
+  setText("distance-unit-traveled", "coordinate units"); setText("distance-unit-remaining", "coordinate units");
+  setText("model-note", "Straight-line Euclidean simulation · coordinate units, not road distance · simulation time is not real delivery ETA");
+  setText("map-help", "Drag to pan · scroll to zoom · select a stop for details");
   const locations = schedule.locations;
   const xs = locations.map(point => point.x);
   const ys = locations.map(point => point.y);
@@ -192,7 +273,7 @@ function drawEvents(snapshot) {
     if (!visible.has(event.id)) continue;
     const item = document.createElement("li"); item.className = `event-${event.type}`;
     const dot = document.createElement("span"); dot.className = "event-dot";
-    const time = document.createElement("time"); time.textContent = seconds(event.time);
+    const time = document.createElement("time"); time.textContent = seconds(event.time * (geographic() ? schedule.demo_time_scale : 1));
     const text = document.createElement("span"); text.textContent = eventDescription(event);
     item.append(dot, time, text);
     fragment.append(item);
@@ -208,21 +289,25 @@ function drawEvents(snapshot) {
 
 function render(snapshot) {
   if (!playback || !schedule || !base) return;
+  if (geographic()) roadMap.update(snapshot, selectedIndex, playback.state);
+  else {
   const point = mapPoint(snapshot);
   $("vehicle").setAttribute("transform", `translate(${point.x} ${point.y})`);
   $("van-body").setAttribute("transform", `rotate(${-snapshot.heading * 180 / Math.PI})`);
   $("vehicle").style.pointerEvents = "none";
   $("traveled-line").setAttribute("points", completedPoints(snapshot).map(p => `${p.x},${p.y}`).join(" "));
+  }
   const status = playback.state === "playing" && snapshot.phase === "delivering" ? "Delivering" : STATE_LABELS[playback.state];
   setText("vehicle-status", status);
   setText("phase-badge", PHASE_LABELS[snapshot.phase]);
   setText("destination", snapshot.destination_index !== null ? schedule.locations[snapshot.destination_index].name : (playback.state === "completed" ? "Returned to warehouse" : "Ready at warehouse"));
-  setText("position", `x ${number(snapshot.x)} · y ${number(snapshot.y)}`);
+  setText("position", geographic() ? `lat ${number(snapshot.y, 6)} · lon ${number(snapshot.x, 6)}` : `x ${number(snapshot.x)} · y ${number(snapshot.y)}`);
   setText("delivered-count", `${snapshot.delivered_count} / ${schedule.locations.length - 1}`);
   setText("remaining-count", `${snapshot.remaining_count} remaining`);
-  setText("distance-traveled", number(snapshot.distance_traveled));
-  setText("distance-remaining", number(snapshot.remaining_distance));
+  setText("distance-traveled", geographic() ? distanceLabel(snapshot.distance_traveled) : number(snapshot.distance_traveled));
+  setText("distance-remaining", geographic() ? distanceLabel(snapshot.remaining_distance) : number(snapshot.remaining_distance));
   setText("elapsed", seconds(snapshot.elapsed));
+  if (geographic()) setText("journey-elapsed", journeyTime(snapshot.elapsed * schedule.demo_time_scale));
   setText("time-remaining", seconds(snapshot.remaining_time));
   setText("playback-remaining", seconds(snapshot.remaining_time / playback.speed));
   setText("distance-progress", `${number(snapshot.distance_progress_percent, 1)}%`);
@@ -243,6 +328,9 @@ function render(snapshot) {
   const statusesSignature = snapshot.statuses.join("|");
   if (statusesSignature !== lastStatusSignature) {
     lastStatusSignature = statusesSignature;
+    if (geographic()) {
+      manifestRows.forEach((cell, index) => { cell.textContent = snapshot.statuses[index]; cell.style.color = COLORS[snapshot.statuses[index]]; });
+    }
     for (const [index, marker] of markers.entries()) {
       const value = snapshot.statuses[index];
       marker.shape.setAttribute("fill", COLORS[value]);
@@ -256,7 +344,7 @@ function render(snapshot) {
     const location = schedule.locations[selectedIndex];
     const visit = schedule.route.slice(0, -1).indexOf(selectedIndex);
     setText("selected-name", location.name);
-    setText("selected-details", `${location.id} · (${number(location.x)}, ${number(location.y)}) · ${selectedIndex === schedule.depot_index ? "Warehouse" : `Visit ${visit}`}`);
+    setText("selected-details", geographic() ? `${location.id} · lat ${number(location.latitude, 6)} · lon ${number(location.longitude, 6)} · ${location.is_depot ? "Kho" : `Thứ tự ${visit}`}` : `${location.id} · (${number(location.x)}, ${number(location.y)}) · ${selectedIndex === schedule.depot_index ? "Warehouse" : `Visit ${visit}`}`);
     setText("selected-status", snapshot.statuses[selectedIndex]);
     $("selected-status").style.color = COLORS[snapshot.statuses[selectedIndex]];
   }
@@ -352,8 +440,24 @@ function receiveRender(event) {
   if (event.source !== window.parent || !event.data || event.data.type !== "streamlit:render") return;
   const args = event.data.args ?? {};
   disabled = Boolean(event.data.disabled);
-  if (!args.schedule?.route_key) return;
+  if (!args.schedule?.route_key && !args.editor) return;
   try {
+    if (args.editor) {
+      cancelAnimation(); schedule = null; playback = null; base = null;
+      const changed = editor?.dataset_fingerprint !== args.editor.dataset_fingerprint;
+      editor = args.editor;
+      $("map").toggleAttribute("hidden", true); $("leaflet-map").hidden = false;
+      $("basemap-tools").hidden = false;
+      $("workspace").classList.add("editor-mode", "geographic-mode");
+      $("loading").hidden = true; $("workspace").hidden = false; $("error").hidden = true;
+      $("complete-banner").hidden = true;
+      $("fit").textContent = "Vừa khung bản đồ";
+      setText("map-help", "Nhấp vào bản đồ để thêm điểm giao hàng · nhấp biểu tượng để xem tọa độ");
+      if (changed) getRoadMap().network(editor, true);
+      getRoadMap().basemap.refreshStatus();
+      resizeFrame(); return;
+    }
+    editor = null;
     if (!schedule || schedule.route_key !== args.schedule.route_key) {
       cancelAnimation();
       const firstMount = schedule === null;
@@ -363,6 +467,8 @@ function receiveRender(event) {
       lastEventSignature = "uninitialized";
       lastStatusSignature = "";
       lastStorage = -Infinity;
+      // Leaflet needs the visible container's dimensions when fitting bounds.
+      $("workspace").hidden = false;
       drawNetwork();
       $("loading").hidden = true;
       $("workspace").hidden = false;
@@ -398,9 +504,24 @@ function dispose() {
   document.removeEventListener("visibilitychange", visibilityChanged);
 }
 
+function restoreFromHistory(event) {
+  if (!event.persisted || !disposed) return;
+  // A browser may restore the whole iframe from its back/forward cache.
+  // Reconnect listeners and observers, while keeping the saved cursor paused.
+  disposed = false;
+  window.addEventListener("message", receiveRender);
+  document.addEventListener("visibilitychange", visibilityChanged);
+  window.addEventListener("pagehide", dispose, {once: true});
+  resizeObserver.observe($("simulation"));
+  if (playback) render(playback.snapshot());
+  message("streamlit:componentReady", {apiVersion: 1});
+  resizeFrame();
+}
+
 window.addEventListener("message", receiveRender);
 document.addEventListener("visibilitychange", visibilityChanged);
 window.addEventListener("pagehide", dispose, {once: true});
+window.addEventListener("pageshow", restoreFromHistory);
 const resizeObserver = new ResizeObserver(resizeFrame);
 resizeObserver.observe($("simulation"));
 message("streamlit:componentReady", {apiVersion: 1});

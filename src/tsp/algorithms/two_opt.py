@@ -1,20 +1,20 @@
-"""Deterministic first-improvement 2-opt on a closed Euclidean route."""
+"""Deterministic first-improvement 2-opt on a closed directed-cost route."""
 from __future__ import annotations
 
 from time import perf_counter
 from typing import Sequence
-from ..distance import distance_matrix, route_distance
+from ..distance import resolve_matrix, route_distance
 from ..models import Dataset, OptimizationResult
 from ..validation import validate_route
 from .nearest_neighbor import nearest_neighbor
 
 
-def two_opt(dataset: Dataset, initial_route: Sequence[int] | None = None) -> OptimizationResult:
+def two_opt(dataset: Dataset, initial_route: Sequence[int] | None = None, *, matrix=None) -> OptimizationResult:
     """Improve NN by default; a supplied route is labeled separately from pure GA."""
     started = perf_counter()
-    matrix = distance_matrix(dataset)
+    matrix = resolve_matrix(dataset, matrix)
     from_nn = initial_route is None
-    route = nearest_neighbor(dataset).route if from_nn else list(initial_route)
+    route = nearest_neighbor(dataset, matrix=matrix).route if from_nn else list(initial_route)
     validate_route(route, dataset)
     distance = route_distance(route, matrix)
     evaluations = 1

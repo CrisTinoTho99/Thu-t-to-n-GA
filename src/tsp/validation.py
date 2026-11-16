@@ -19,6 +19,8 @@ def validate_dataset(dataset: "Dataset") -> None:
         raise ValueError(f"A dataset needs 1–{MAX_CUSTOMERS} customers and one depot.")
     if not all(isinstance(location, Location) for location in dataset.locations):
         raise ValueError("Every dataset row must be a Location.")
+    if any(point.latitude is not None for point in dataset.locations) and not all(point.latitude is not None for point in dataset.locations):
+        raise ValueError("Do not mix geographic and Euclidean coordinates in one dataset.")
     if sum(location.is_depot for location in dataset.locations) != 1:
         raise ValueError("Exactly one depot is required.")
     ids = [location.id for location in dataset.locations]

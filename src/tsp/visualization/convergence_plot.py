@@ -39,11 +39,15 @@ def search_comparison_figure(results: Sequence[Any], dark: bool = True) -> go.Fi
     figure.update_layout(title="Search progress at recorded evaluation budgets")
     figure.update_xaxes(title="Complete-tour objective evaluations", rangemode="tozero")
     figure.update_yaxes(title="Best distance · coordinate units", rangemode="tozero")
+    if results and results[0].parameters.get("matrix_fingerprint"):
+        metadata = results[0].parameters
+        figure.update_yaxes(title=f"Best {metadata.get('objective', 'distance')} · {metadata.get('unit', 'units')}")
     return figure
 
 
 def convergence_figure(
-    history: Sequence[dict[str, Any]], dark: bool = True
+    history: Sequence[dict[str, Any]], dark: bool = True, *,
+    objective: str = "distance", unit: str = "coordinate units"
 ) -> go.Figure:
     """Plot the best-so-far and current population mean distances by generation."""
     figure = go.Figure()
@@ -61,7 +65,7 @@ def convergence_figure(
         hovertemplate="Generation %{x}<br>Best: %{y:.3f}<extra></extra>",
     ))
     style_figure(figure, dark)
-    figure.update_layout(title="Evolution of route distance")
+    figure.update_layout(title=f"Evolution of route {objective}")
     figure.update_xaxes(title="Generation", rangemode="tozero")
-    figure.update_yaxes(title="Distance · coordinate units", rangemode="tozero")
+    figure.update_yaxes(title=f"{objective.capitalize()} · {unit}", rangemode="tozero")
     return figure
